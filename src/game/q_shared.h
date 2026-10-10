@@ -189,10 +189,24 @@ If you have questions concerning this license or the applicable additional terms
 
 #define PATH_SEP    '/'
 
+// botlib is always statically linked into the engine binary
+#define BOTLIB_HARD_LINKED
+
+// game/cgame/ui linkage:
+//  - macOS: loaded at runtime as separate dylibs (like the Linux build),
+//    so they are NOT hard-linked (each dylib carries its own q_shared/bg).
+//  - iOS/iPadOS: dynamic module loading is impractical, so hard-link the
+//    modules into a single binary. Define RTCW_HARD_LINKED to force this
+//    on any Apple target.
+#if TARGET_OS_IPHONE && !defined( RTCW_HARD_LINKED )
+#define RTCW_HARD_LINKED
+#endif
+
+#ifdef RTCW_HARD_LINKED
 #define GAME_HARD_LINKED
 #define CGAME_HARD_LINKED
 #define UI_HARD_LINKED
-#define BOTLIB_HARD_LINKED
+#endif
 
 #endif
 

@@ -52,6 +52,14 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "macosx_glimp.h"
 
+#elif defined( __APPLE__ )
+
+// modern Apple (arm64/x86_64) SDL build: use the system OpenGL headers
+// directly. iOS has no desktop OpenGL, so the GL path is macOS-only; the
+// iOS renderer is provided separately (Metal).
+#include <OpenGL/gl.h>
+#include <OpenGL/glext.h>
+
 #elif defined( __linux__ )
 
 #include <GL/gl.h>
