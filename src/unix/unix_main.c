@@ -433,7 +433,7 @@ void Sys_ConsoleInputInit() {
 				  characters  EOF,  EOL,  EOL2, ERASE, KILL, REPRINT,
 				  STATUS, and WERASE, and buffers by lines.
 		 ISIG: when any of the characters  INTR,  QUIT,  SUSP,  or
-				  DSUSP are received, generate the corresponding sig­
+				  DSUSP are received, generate the corresponding sigï¿½
 				  nal
 		*/
 		tc.c_lflag &= ~( ECHO | ICANON );
@@ -630,16 +630,16 @@ extern char   *FS_BuildOSPath( const char *base, const char *game, const char *q
 
 #if defined( DO_LOADDLL_WRAP )
 void *Sys_LoadDll_Wrapped( const char *name,
-						   int( **entryPoint ) ( int, ... ),
-						   int ( *systemcalls )( int, ... ) )
+						   intptr_t( **entryPoint ) ( intptr_t, ... ),
+						   intptr_t ( *systemcalls )( intptr_t, ... ) )
 #else
 void *Sys_LoadDll( const char *name,
-				   int( **entryPoint ) ( int, ... ),
-				   int ( *systemcalls )( int, ... ) )
+				   intptr_t( **entryPoint ) ( intptr_t, ... ),
+				   intptr_t ( *systemcalls )( intptr_t, ... ) )
 #endif
 {
 	void *libHandle;
-	void ( *dllEntry )( int ( *syscallptr )( int, ... ) );
+	void ( *dllEntry )( intptr_t ( *syscallptr )( intptr_t, ... ) );
 	char fname[MAX_OSPATH];
 	char  *homepath;
 	char  *basepath;
@@ -651,7 +651,9 @@ void *Sys_LoadDll( const char *name,
 	// bk001206 - let's have some paranoia
 	assert( name );
 
-#if defined __i386__
+#if defined __APPLE__
+	snprintf( fname, sizeof( fname ), "%s.dylib", name );
+#elif defined __i386__
 	snprintf( fname, sizeof( fname ), "%si386.so", name );
 #elif defined __powerpc__   //rcg010207 - PPC support.
 	snprintf( fname, sizeof( fname ), "%sppc.so", name );
@@ -773,8 +775,8 @@ void *Sys_LoadDll( const char *name,
 
 #if defined( DO_LOADDLL_WRAP )
 void *Sys_LoadDll( const char *name,
-				   int( **entryPoint ) ( int, ... ),
-				   int ( *systemcalls )( int, ... ) ) {
+				   intptr_t( **entryPoint ) ( intptr_t, ... ),
+				   intptr_t ( *systemcalls )( intptr_t, ... ) ) {
 	void *ret;
 	Cvar_Set( "cl_noprint", "1" );
 	ret = Sys_LoadDll_Wrapped( name, entryPoint, systemcalls );

@@ -1,0 +1,13 @@
+# CMake / build output
+build/
+*.o
+*.obj
+
+# macOS / Xcode
+.DS_Store
+*.xcodeproj/
+DerivedData/
+
+# Module/engine binaries
+*.dylib
+wolfsp
