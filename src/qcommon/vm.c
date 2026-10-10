@@ -331,22 +331,24 @@ Dlls will call this directly
 
 ============
 */
-int QDECL VM_DllSyscall( int arg, ... ) {
-#if ( ( defined __linux__ ) && ( defined __powerpc__ ) )
-	// rcg010206 - see commentary above
-	int args[16];
+intptr_t QDECL VM_DllSyscall( intptr_t arg, ... ) {
+#if !id386 || defined __clang__
+	// rcg010206 - see commentary above. Required on any platform (such as
+	// 64-bit ARM / x86_64) where varargs are not laid out contiguously on the
+	// stack as pointer-sized ints. Copy them into a real array via stdarg.
+	intptr_t args[16];
 	int i;
 	va_list ap;
 
 	args[0] = arg;
 
 	va_start( ap, arg );
-	for ( i = 1; i < sizeof( args ) / sizeof( args[i] ); i++ )
-		args[i] = va_arg( ap, int );
+	for ( i = 1; i < (int)( sizeof( args ) / sizeof( args[0] ) ); i++ )
+		args[i] = va_arg( ap, intptr_t );
 	va_end( ap );
 
 	return currentVM->systemCall( args );
-#else // original id code
+#else // original id code (32-bit x86 only)
 	return currentVM->systemCall( &arg );
 #endif
 }
@@ -369,7 +371,7 @@ vm_t *VM_Restart( vm_t *vm ) {
 	// DLL's can't be restarted in place
 	if ( vm->dllHandle ) {
 		char name[MAX_QPATH];
-		int ( *systemCall )( int *parms );
+		intptr_t ( *systemCall )( intptr_t *parms );
 
 		systemCall = vm->systemCall;
 		Q_strncpyz( name, vm->name, sizeof( name ) );
@@ -439,7 +441,7 @@ it will attempt to load as a system dll
 
 #define STACK_SIZE  0x20000
 
-vm_t *VM_Create( const char *module, int ( *systemCalls )(int *),
+vm_t *VM_Create( const char *module, intptr_t ( *systemCalls )(intptr_t *),
 				 vmInterpret_t interpret ) {
 	vm_t        *vm;
 	vmHeader_t  *header;
@@ -620,7 +622,7 @@ void VM_Clear( void ) {
 	lastVM = NULL;
 }
 
-void *VM_ArgPtr( int intValue ) {
+void *VM_ArgPtr( intptr_t intValue ) {
 	if ( !intValue ) {
 		return NULL;
 	}
@@ -636,7 +638,7 @@ void *VM_ArgPtr( int intValue ) {
 	}
 }
 
-void *VM_ExplicitArgPtr( vm_t *vm, int intValue ) {
+void *VM_ExplicitArgPtr( vm_t *vm, intptr_t intValue ) {
 	if ( !intValue ) {
 		return NULL;
 	}
@@ -681,15 +683,10 @@ locals from sp
 #define MAX_STACK   256
 #define STACK_MASK  ( MAX_STACK - 1 )
 
-int QDECL VM_Call( vm_t *vm, int callnum, ... ) {
+intptr_t QDECL VM_Call( vm_t *vm, int callnum, ... ) {
 	vm_t    *oldVM;
-	int r;
-	//rcg010207 see dissertation at top of VM_DllSyscall() in this file.
-#if ( ( defined __linux__ ) && ( defined __powerpc__ ) )
+	intptr_t r;
 	int i;
-	int args[16];
-	va_list ap;
-#endif
 
 
 	if ( !vm ) {
@@ -707,25 +704,35 @@ int QDECL VM_Call( vm_t *vm, int callnum, ... ) {
 	// if we have a dll loaded, call it directly
 	if ( vm->entryPoint ) {
 		//rcg010207 -  see dissertation at top of VM_DllSyscall() in this file.
-#if ( ( defined __linux__ ) && ( defined __powerpc__ ) )
+		// Marshal the varargs into a real array before calling, rather than
+		// relying on them being contiguous pointer-sized ints on the stack
+		// (false on 64-bit x86_64 / ARM, where they may be in registers).
+		intptr_t args[12];
+		va_list ap;
 		va_start( ap, callnum );
-		for ( i = 0; i < sizeof( args ) / sizeof( args[i] ); i++ )
+		for ( i = 0; i < (int)( sizeof( args ) / sizeof( args[0] ) ); i++ )
+			args[i] = va_arg( ap, intptr_t );
+		va_end( ap );
+
+		r = vm->entryPoint( callnum, args[0], args[1], args[2], args[3],
+							args[4], args[5], args[6], args[7],
+							args[8], args[9], args[10], args[11] );
+	} else {
+		// interpreted / compiled QVM: args[0] is the call number, the rest
+		// are the parameters. These paths use 32-bit int cells.
+		int args[16];
+		va_list ap;
+		args[0] = callnum;
+		va_start( ap, callnum );
+		for ( i = 1; i < (int)( sizeof( args ) / sizeof( args[0] ) ); i++ )
 			args[i] = va_arg( ap, int );
 		va_end( ap );
 
-		r = vm->entryPoint( callnum,  args[0],  args[1],  args[2], args[3],
-							args[4],  args[5],  args[6], args[7],
-							args[8],  args[9], args[10], args[11],
-							args[12], args[13], args[14], args[15] );
-#else // PPC above, original id code below
-		r = vm->entryPoint( ( &callnum )[0], ( &callnum )[1], ( &callnum )[2], ( &callnum )[3],
-							( &callnum )[4], ( &callnum )[5], ( &callnum )[6], ( &callnum )[7],
-							( &callnum )[8],  ( &callnum )[9],  ( &callnum )[10],  ( &callnum )[11],  ( &callnum )[12] );
-#endif
-	} else if ( vm->compiled ) {
-		r = VM_CallCompiled( vm, &callnum );
-	} else {
-		r = VM_CallInterpreted( vm, &callnum );
+		if ( vm->compiled ) {
+			r = VM_CallCompiled( vm, args );
+		} else {
+			r = VM_CallInterpreted( vm, args );
+		}
 	}
 
 	if ( oldVM != NULL ) { // bk001220 - assert(currentVM!=NULL) for oldVM==NULL

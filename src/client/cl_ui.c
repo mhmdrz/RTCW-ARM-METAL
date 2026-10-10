@@ -779,9 +779,14 @@ static int FloatAsInt( float f ) {
 	return temp;
 }
 
-void *VM_ArgPtr( int intValue );
+void *VM_ArgPtr( intptr_t intValue );
 #define VMA( x ) VM_ArgPtr( args[x] )
-#define VMF( x )  ( (float *)args )[x]
+static ID_INLINE float _vmf( intptr_t x ) {
+	floatint_t fi;
+	fi.i = (int) x;
+	return fi.f;
+}
+#define VMF( x )  _vmf( args[x] )
 
 /*
 ====================
@@ -790,7 +795,7 @@ CL_UISystemCalls
 The ui module is making a system call
 ====================
 */
-int CL_UISystemCalls( int *args ) {
+intptr_t CL_UISystemCalls( intptr_t *args ) {
 	switch ( args[0] ) {
 	case UI_ERROR:
 		Com_Error( ERR_DROP, "%s", VMA( 1 ) );
@@ -1083,13 +1088,13 @@ int CL_UISystemCalls( int *args ) {
 		return 0;
 
 	case UI_MEMSET:
-		return (int)memset( VMA( 1 ), args[2], args[3] );
+		return (intptr_t)memset( VMA( 1 ), args[2], args[3] );
 
 	case UI_MEMCPY:
-		return (int)memcpy( VMA( 1 ), VMA( 2 ), args[3] );
+		return (intptr_t)memcpy( VMA( 1 ), VMA( 2 ), args[3] );
 
 	case UI_STRNCPY:
-		return (int)strncpy( VMA( 1 ), VMA( 2 ), args[3] );
+		return (intptr_t)strncpy( VMA( 1 ), VMA( 2 ), args[3] );
 
 	case UI_SIN:
 		return FloatAsInt( sin( VMF( 1 ) ) );

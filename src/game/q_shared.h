@@ -72,6 +72,15 @@ If you have questions concerning this license or the applicable additional terms
 #define idppc 1
 #endif
 
+// 64-bit ARM (Apple Silicon, iOS/iPadOS devices). No x86 asm, uses the
+// generic C fallbacks. Also flag generic 64-bit for pointer-size-sensitive code.
+#if defined( __aarch64__ ) || defined( __arm64__ )
+#define idarm64 1
+#endif
+#if defined( __aarch64__ ) || defined( __arm64__ ) || defined( __x86_64__ ) || defined( _M_X64 ) || defined( __LP64__ )
+#define idx64 1
+#endif
+
 /**********************************************************************
   VM Considerations
 
@@ -103,6 +112,7 @@ If you have questions concerning this license or the applicable additional terms
 #include <time.h>
 #include <ctype.h>
 #include <limits.h>
+#include <stdint.h>     // intptr_t, for 64-bit (LP64) syscall ABI
 
 #endif
 
@@ -157,12 +167,22 @@ If you have questions concerning this license or the applicable additional terms
 
 #if defined( __MACH__ ) && defined( __APPLE__ )
 
+#include <TargetConditionals.h>
+
 #define MAC_STATIC
 
 #ifdef __ppc__
 #define CPUSTRING   "MacOSXS-ppc"
 #elif defined __i386__
 #define CPUSTRING   "MacOSXS-i386"
+#elif defined __x86_64__
+#define CPUSTRING   "macos-x86_64"
+#elif defined( __aarch64__ ) || defined( __arm64__ )
+#if TARGET_OS_IPHONE
+#define CPUSTRING   "ios-arm64"
+#else
+#define CPUSTRING   "macos-arm64"
+#endif
 #else
 #define CPUSTRING   "MacOSXS-other"
 #endif
@@ -231,6 +251,14 @@ typedef int qhandle_t;
 typedef int sfxHandle_t;
 typedef int fileHandle_t;
 typedef int clipHandle_t;
+
+// used to pass floats across the (integer) VM syscall boundary without
+// relying on 32-bit-sized argument cells (needed for 64-bit / LP64 targets)
+typedef union {
+	float f;
+	int i;
+	unsigned int ui;
+} floatint_t;
 
 #ifndef ID_INLINE
 #ifdef _WIN32
