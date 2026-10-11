@@ -12,7 +12,10 @@ project(RTCW_SP C CXX)
 #
 
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
+
+# Renderer backend: OpenGL (default, macOS) or Metal (required for iOS).
+option(USE_METAL "Use the Metal renderer backend instead of OpenGL" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -23,8 +26,16 @@ set(SRC ${CMAKE_SOURCE_DIR}/src)
 # Detect Apple platform
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
   set(RTCW_IOS TRUE)
+  set(USE_METAL ON CACHE BOOL "iOS requires Metal" FORCE)   # no OpenGL on iOS
 else()
   set(RTCW_IOS FALSE)
+endif()
+
+if(USE_METAL)
+  add_compile_definitions(USE_METAL)
+  message(STATUS "Renderer backend: Metal")
+else()
+  message(STATUS "Renderer backend: OpenGL")
 endif()
 
 if(NOT RTCW_IOS AND NOT CMAKE_OSX_ARCHITECTURES)
@@ -91,9 +102,19 @@ set(PLATFORM_SRC
   ${SRC}/unix/unix_main.c
   ${SRC}/unix/unix_net.c
   ${SRC}/unix/unix_shared.c
-  ${SRC}/sdl/sdl_glimp.c
   ${SRC}/sdl/sdl_input.c
   ${SRC}/sdl/sdl_snd.c)
+
+if(USE_METAL)
+  # Metal backend: the GL-on-Metal shim + Metal windowing replace sdl_glimp.c.
+  # -fno-operator-names: tr_local.h uses `or` as an identifier, which is a C++
+  # alternative-operator keyword in these ObjC++ sources.
+  set_source_files_properties(${SRC}/metal/mtl_gl.mm ${SRC}/metal/mtl_glimp.mm
+    PROPERTIES COMPILE_OPTIONS "-fno-operator-names")
+  list(APPEND PLATFORM_SRC ${SRC}/metal/mtl_gl.mm ${SRC}/metal/mtl_glimp.mm)
+else()
+  list(APPEND PLATFORM_SRC ${SRC}/sdl/sdl_glimp.c)
+endif()
 
 set(ENGINE_SRC
   ${SRC}/game/q_shared.c
@@ -111,10 +132,16 @@ target_link_libraries(wolfsp PRIVATE rtcw_botlib rtcw_jpeg rtcw_splines ${SDL2_L
 
 if(NOT RTCW_IOS)
   target_link_libraries(wolfsp PRIVATE
-    "-framework OpenGL" "-framework Cocoa" "-framework IOKit"
+    "-framework Cocoa" "-framework IOKit"
     "-framework CoreAudio" "-framework AudioToolbox" "-framework CoreVideo"
     "-framework Carbon" "-framework ForceFeedback" "-framework CoreFoundation"
     dl)
+  if(USE_METAL)
+    target_link_libraries(wolfsp PRIVATE
+      "-framework Metal" "-framework QuartzCore" "-framework Foundation")
+  else()
+    target_link_libraries(wolfsp PRIVATE "-framework OpenGL")
+  endif()
 endif()
 
 # ----------------------------------------------------------------------------
@@ -156,11 +183,13 @@ rtcw_module(ui
 # iOS scaffold (hard-linked, Metal - gated; cannot link until Part 6)
 # ----------------------------------------------------------------------------
 if(RTCW_IOS)
+  # iOS hard-links the game modules into the engine and renders via Metal.
   target_compile_definitions(wolfsp PRIVATE RTCW_HARD_LINKED)
   target_sources(wolfsp PRIVATE ${GAME_SRC} ${BOTAI_SRC} ${CGAME_SRC} ${UI_SRC})
   target_link_libraries(wolfsp PRIVATE
     "-framework UIKit" "-framework Metal" "-framework QuartzCore"
-    "-framework AudioToolbox" "-framework OpenGLES")
-  message(WARNING "iOS target: OpenGL is unavailable on iOS. This target "
-                  "cannot link until the Metal renderer (Part 6) is in place.")
+    "-framework Foundation" "-framework AudioToolbox")
+  # NOTE: a full iOS link/run additionally needs the SDL2 iOS static library
+  # and an app bundle (Info.plist, launch storyboard) + bundled assets. The
+  # renderer/translation layer itself is iOS-ready (Metal).
 endif()

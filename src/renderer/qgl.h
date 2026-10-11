@@ -33,6 +33,16 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __QGL_H__
 #define __QGL_H__
 
+#if defined( USE_METAL )
+
+// Metal backend: qgl* are implemented by the GL-1.x-on-Metal translation
+// shim (src/metal). This header supplies the GL types, the GL_* enum
+// constants the renderer passes as arguments, and the qgl* prototypes --
+// no system OpenGL headers are used (iOS has none; macOS uses Metal here).
+#include "qgl_metal.h"
+
+#else // !USE_METAL : original OpenGL path
+
 #if defined( __LINT__ )
 
 #include <GL/gl.h>
@@ -621,5 +631,7 @@ extern void ( *qglXSwapBuffers )( Display *dpy, GLXDrawable drawable );
 #endif // __linux__ || __FreeBSD__ // rb010123
 
 #endif  // _WIN32 && __linux__
+
+#endif // !USE_METAL
 
 #endif
