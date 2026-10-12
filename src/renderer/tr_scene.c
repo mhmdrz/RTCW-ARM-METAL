@@ -55,7 +55,14 @@ R_ToggleSmpFrame
 ====================
 */
 void R_ToggleSmpFrame( void ) {
-	if ( r_smp->integer ) {
+	// NOTE: gate on glConfig.smpActive, not r_smp->integer. r_smp defaults to 1
+	// on multicore machines, but this build has no render thread
+	// (GLimp_SpawnRenderThread returns qfalse -> smpActive is always qfalse).
+	// Toggling into the second command buffer that no render thread services
+	// corrupts the buffer and crashes intermittently (wild pointer in
+	// R_GetCommandBuffer / RE_SetColor), especially across the vid_restart a
+	// map transition performs.
+	if ( glConfig.smpActive ) {
 		// use the other buffers next frame, because another CPU
 		// may still be rendering into the current ones
 		tr.smpFrame ^= 1;
