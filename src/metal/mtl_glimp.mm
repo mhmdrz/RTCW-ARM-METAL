@@ -48,6 +48,15 @@ void GLimp_Init( void ) {
 
     ri.Printf( PRINT_ALL, "Initializing Metal subsystem (SDL2)\n" );
 
+    // Apple Metal Performance HUD (FPS / frame-time / GPU-memory overlay).
+    // Enable with "+set r_metalHud 1" at launch (or the MTL_HUD_ENABLED=1 env
+    // var). The Metal driver reads MTL_HUD_ENABLED when the device is created,
+    // so set it now -- before MTLCreateSystemDefaultDevice below.
+    cvar_t *r_metalHud = ri.Cvar_Get( "r_metalHud", "0", CVAR_ARCHIVE | CVAR_LATCH );
+    if ( r_metalHud->integer ) {
+        setenv( "MTL_HUD_ENABLED", "1", 1 );
+    }
+
     if ( SDL_WasInit( SDL_INIT_VIDEO ) == 0 ) {
         if ( SDL_InitSubSystem( SDL_INIT_VIDEO ) < 0 ) {
             ri.Error( ERR_FATAL, "SDL_InitSubSystem(VIDEO) failed: %s\n", SDL_GetError() );
@@ -79,6 +88,15 @@ void GLimp_Init( void ) {
     mtl_layer.device = mtl_device;
     mtl_layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
     mtl_layer.framebufferOnly = NO;   // allow readback for screenshots
+
+    // Also enable the HUD via the programmatic API (macOS 13 / iOS 16+), which
+    // covers the case where MTL_HUD_ENABLED was not present at device creation.
+    if ( r_metalHud->integer || getenv( "MTL_HUD_ENABLED" ) ) {
+        if ( @available( macOS 13.0, iOS 16.0, * ) ) {
+            mtl_layer.developerHUDProperties = @{ @"mode" : @"default" };
+        }
+        ri.Printf( PRINT_ALL, "Metal performance HUD enabled\n" );
+    }
 
     int dw = 0, dh = 0;
     SDL_Metal_GetDrawableSize( s_window, &dw, &dh );
