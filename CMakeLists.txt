@@ -109,8 +109,11 @@ if(USE_METAL)
   # Metal backend: the GL-on-Metal shim + Metal windowing replace sdl_glimp.c.
   # -fno-operator-names: tr_local.h uses `or` as an identifier, which is a C++
   # alternative-operator keyword in these ObjC++ sources.
+  # -fobjc-arc: use ARC so per-draw MTLBuffers and replaced textures are
+  # released automatically (the MRC code leaked an MTLBuffer every draw call ->
+  # out-of-memory kill in-game). The shim uses no manual retain/release.
   set_source_files_properties(${SRC}/metal/mtl_gl.mm ${SRC}/metal/mtl_glimp.mm
-    PROPERTIES COMPILE_OPTIONS "-fno-operator-names")
+    PROPERTIES COMPILE_OPTIONS "-fno-operator-names;-fobjc-arc")
   list(APPEND PLATFORM_SRC ${SRC}/metal/mtl_gl.mm ${SRC}/metal/mtl_glimp.mm)
 else()
   list(APPEND PLATFORM_SRC ${SRC}/sdl/sdl_glimp.c)

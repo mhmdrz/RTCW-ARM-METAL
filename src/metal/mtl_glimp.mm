@@ -80,7 +80,8 @@ void GLimp_Init( void ) {
     s_metalView = SDL_Metal_CreateView( s_window );
     if ( !s_metalView ) ri.Error( ERR_FATAL, "SDL_Metal_CreateView failed: %s\n", SDL_GetError() );
 
-    mtl_layer = (CAMetalLayer *)SDL_Metal_GetLayer( s_metalView );
+    // __bridge: SDL owns the layer (via the Metal view); no ownership transfer.
+    mtl_layer = (__bridge CAMetalLayer *)SDL_Metal_GetLayer( s_metalView );
     mtl_device = MTLCreateSystemDefaultDevice();
     if ( !mtl_device ) ri.Error( ERR_FATAL, "MTLCreateSystemDefaultDevice failed\n" );
     mtl_queue = [mtl_device newCommandQueue];

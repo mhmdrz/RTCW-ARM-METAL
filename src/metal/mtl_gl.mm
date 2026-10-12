@@ -460,16 +460,19 @@ id<MTLRenderCommandEncoder> MTL_Encoder( void ) {
 }
 
 void MTL_BeginFrame( void ) {
-    mtl_drawable = [mtl_layer nextDrawable];
+    @autoreleasepool {
+    mtl_drawable = [mtl_layer nextDrawable];   // ARC retains via the global
     mtl_cmd = [mtl_queue commandBuffer];
     // start the frame with a clear (RTCW issues its own glClear too, but this
     // guarantees a defined surface)
     s_pendColorLoad = MTLLoadActionClear;
     s_pendDepthLoad = MTLLoadActionClear;
     s_pendStencilLoad = MTLLoadActionClear;
+    }
 }
 
 void MTL_EndFrame( void ) {
+    @autoreleasepool {
     // flush any pending clears even if nothing drew this frame
     if (!mtl_enc && (s_pendColorLoad==MTLLoadActionClear)) MTL_Encoder();
     MTL_EndEncoder();
@@ -477,6 +480,7 @@ void MTL_EndFrame( void ) {
     [mtl_cmd commit];
     mtl_cmd = nil;
     mtl_drawable = nil;
+    }
 }
 
 // ============================================================================
@@ -561,6 +565,7 @@ static void emitPrimitives( std::vector<MtlVertex> &out, const std::vector<MtlVe
 
 static void drawVertexList( std::vector<MtlVertex> &verts, GLenum mode ) {
     if (verts.empty() || !mtl_device) return;
+    @autoreleasepool {
     id<MTLRenderCommandEncoder> enc = MTL_Encoder();
     if (!enc) return;
 
@@ -643,6 +648,7 @@ static void drawVertexList( std::vector<MtlVertex> &verts, GLenum mode ) {
     [enc setVertexBytes:&u length:sizeof(u) atIndex:1];
     [enc setFragmentBytes:&u length:sizeof(u) atIndex:1];
     [enc drawPrimitives:prim vertexStart:0 vertexCount:tri.size()];
+    } // @autoreleasepool
 }
 
 // ============================================================================
@@ -811,6 +817,7 @@ static int glComponents( GLenum fmt ) {
 }
 static void uploadRGBA( GLuint name, GLint w, GLint h, GLenum format, const void *pixels, bool mip ) {
     if (!name || !s_textures.count(name) || w<=0 || h<=0) return;
+    @autoreleasepool {
     MtlTexObj &t = s_textures[name];
     MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
                                                                                  width:w height:h mipmapped:(mip?YES:NO)];
@@ -840,6 +847,7 @@ static void uploadRGBA( GLuint name, GLint w, GLint h, GLenum format, const void
         [bl endEncoding]; [cb commit];
     }
     t.dirty = true;
+    } // @autoreleasepool
 }
 void qglTexImage2D( GLenum target, GLint level, GLint internalformat, GLsizei w, GLsizei h,
                     GLint border, GLenum format, GLenum type, const GLvoid *pixels ) {
