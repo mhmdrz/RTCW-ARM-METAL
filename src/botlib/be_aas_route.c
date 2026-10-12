@@ -899,7 +899,13 @@ typedef struct routecacheheader_s
 } routecacheheader_t;
 
 #define RCID                        ( ( 'C' << 24 ) + ( 'R' << 16 ) + ( 'E' << 8 ) + 'M' )
-#define RCVERSION                   15
+// LP64: the on-disk routing cache serializes aas_routingcache_t, whose size
+// depends on pointer width (prev/next/reachabilities). The shipped .rcd files
+// were written by 32-bit tools, so reading them into the larger 64-bit struct
+// overruns the buffer (bus error in AAS_ReadCache). Bump the version so the
+// 32-bit caches are rejected here (before AAS_ReadCache) and routing is
+// recomputed and rewritten in the native (self-consistent) 64-bit layout.
+#define RCVERSION                   ( 15 + 100 )
 
 void AAS_DecompressVis( byte *in, int numareas, byte *decompressed );
 int AAS_CompressVis( byte *vis, int numareas, byte *dest );
