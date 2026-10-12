@@ -105,11 +105,18 @@ static void NeedCDKeyAction( qboolean result ) {
 */
 
 char *UI_Argv( int arg ) {
-	static char buffer[MAX_STRING_CHARS];
+	// Rotating buffers: see CG_Argv in cg_main.c. A single static buffer
+	// breaks expressions that use two UI_Argv() results at once, because the
+	// clobber order depends on the compiler's argument-evaluation order
+	// (worked on x86 right-to-left, not on arm64 left-to-right).
+	static char buffer[8][MAX_STRING_CHARS];
+	static int index = 0;
+	char *buf = buffer[index];
+	index = ( index + 1 ) & 7;
 
-	trap_Argv( arg, buffer, sizeof( buffer ) );
+	trap_Argv( arg, buf, MAX_STRING_CHARS );
 
-	return buffer;
+	return buf;
 }
 
 

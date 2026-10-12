@@ -616,11 +616,21 @@ CG_Argv
 ================
 */
 const char *CG_Argv( int arg ) {
-	static char buffer[MAX_STRING_CHARS];
+	// Rotating buffers: callers frequently use two CG_Argv() results in one
+	// expression, e.g. f( CG_Argv(1), atoi( CG_Argv(2) ) ). With a single
+	// static buffer the second call clobbers the first; whether that mattered
+	// depended on the compiler's argument-evaluation order (x86 evaluated
+	// right-to-left and happened to work, arm64 evaluates left-to-right and
+	// did not -- e.g. it broke cutscene camera names). Rotate so consecutive
+	// calls return distinct buffers.
+	static char buffer[8][MAX_STRING_CHARS];
+	static int index = 0;
+	char *buf = buffer[index];
+	index = ( index + 1 ) & 7;
 
-	trap_Argv( arg, buffer, sizeof( buffer ) );
+	trap_Argv( arg, buf, MAX_STRING_CHARS );
 
-	return buffer;
+	return buf;
 }
 
 
