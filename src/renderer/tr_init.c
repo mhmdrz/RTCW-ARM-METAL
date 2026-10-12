@@ -1006,12 +1006,12 @@ void R_Register( void ) {
 	r_vertexLight = ri.Cvar_Get( "r_vertexLight", "0", CVAR_ARCHIVE | CVAR_LATCH );
 	r_uiFullScreen = ri.Cvar_Get( "r_uifullscreen", "0", 0 );
 	r_subdivisions = ri.Cvar_Get( "r_subdivisions", "4", CVAR_ARCHIVE | CVAR_LATCH );
-#ifdef MACOS_X
-	// Default to using SMP on Mac OS X if we have multiple processors
-	r_smp = ri.Cvar_Get( "r_smp", Sys_ProcessorCount() > 1 ? "1" : "0", CVAR_ARCHIVE | CVAR_LATCH );
-#else
+	// This build has no render thread (GLimp_SpawnRenderThread always returns
+	// qfalse), so SMP can never activate. Default r_smp off: a "1" only drives
+	// dead code paths (second command buffer, smpFrame toggling) that corrupted
+	// memory and crashed intermittently across map-transition vid_restarts. The
+	// authoritative gate is glConfig.smpActive, which stays qfalse regardless.
 	r_smp = ri.Cvar_Get( "r_smp", "0", CVAR_ARCHIVE | CVAR_LATCH );
-#endif
 	r_ignoreFastPath = ri.Cvar_Get( "r_ignoreFastPath", "1", CVAR_ARCHIVE | CVAR_LATCH );
 
 	//

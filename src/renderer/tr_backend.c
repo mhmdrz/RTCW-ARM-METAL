@@ -1578,7 +1578,9 @@ void RB_ExecuteRenderCommands( const void *data ) {
 
 	t1 = ri.Milliseconds();
 
-	if ( !r_smp->integer || data == backEndData[0]->commands.cmds ) {
+	// gate on smpActive, not r_smp: no render thread in this build, so commands
+	// are always executed synchronously out of backEndData[0] (see R_ToggleSmpFrame).
+	if ( !glConfig.smpActive || data == backEndData[0]->commands.cmds ) {
 		backEnd.smpFrame = 0;
 	} else {
 		backEnd.smpFrame = 1;

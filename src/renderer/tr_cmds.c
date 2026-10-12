@@ -201,6 +201,23 @@ render thread if needed.
 void *R_GetCommandBuffer( int bytes ) {
 	renderCommandList_t *cmdList;
 
+	// Defensive guard: this build has no render thread, so smpFrame must be 0
+	// and backEndData[0] must be valid. If anything leaves smpFrame out of
+	// range or points at an unallocated buffer, recover to buffer 0 rather than
+	// dereferencing a wild pointer (was an intermittent RE_SetColor crash).
+	if ( tr.smpFrame < 0 || tr.smpFrame > 1 || !backEndData[tr.smpFrame] ) {
+		static int once = 0;
+		if ( !once ) {
+			once = 1;
+			ri.Printf( PRINT_ALL, "R_GetCommandBuffer: recovering bad smpFrame=%i smpActive=%i backEndData[0]=%p [1]=%p\n",
+					   tr.smpFrame, glConfig.smpActive, (void*)backEndData[0], (void*)backEndData[1] );
+		}
+		tr.smpFrame = 0;
+		if ( !backEndData[0] ) {
+			return NULL;
+		}
+	}
+
 	cmdList = &backEndData[tr.smpFrame]->commands;
 
 	// always leave room for the end of list command
