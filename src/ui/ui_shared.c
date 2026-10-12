@@ -81,10 +81,12 @@ itemDef_t *Menu_SetPrevCursorItem( menuDef_t *menu );
 itemDef_t *Menu_SetNextCursorItem( menuDef_t *menu );
 static qboolean Menu_OverActiveItem( menuDef_t *menu, float x, float y );
 
+// Pools doubled for 64-bit (LP64): menu item structs hold many pointers,
+// so the same menus consume ~2x the pool compared to the original 32-bit build.
 #ifdef CGAME
-#define MEM_POOL_SIZE  128 * 1024
+#define MEM_POOL_SIZE  256 * 1024
 #else
-#define MEM_POOL_SIZE  1024 * 1024
+#define MEM_POOL_SIZE  2 * 1024 * 1024
 #endif
 
 static char memoryPool[MEM_POOL_SIZE];

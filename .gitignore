@@ -12,3 +12,7 @@ DerivedData/
 # Module/engine binaries
 *.dylib
 wolfsp
+
+# Retail game assets (not GPL — never commit)
+*.pk3
+main/*.pk3
