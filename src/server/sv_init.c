@@ -673,6 +673,18 @@ void SV_SpawnServer( char *server, qboolean killBots ) {
 	// shut down the existing game if it is running
 	SV_ShutdownGameProgs();
 
+	// The game's entity array was just freed, so any gentity pointers the
+	// carried-over clients still hold now dangle. NULL them before the new
+	// game initializes and restores state (e.g. on loadgame): SV_SetConfigstring
+	// dereferences client->gentity->r.svFlags when broadcasting, and a stale
+	// pointer there crashes (intermittently -- worse on 64-bit where freed
+	// memory is more often unmapped). They are re-set when clients re-enter.
+	if ( svs.clients ) {
+		for ( i = 0; i < sv_maxclients->integer; i++ ) {
+			svs.clients[i].gentity = NULL;
+		}
+	}
+
 	Com_Printf( "------ Server Initialization ------\n" );
 	Com_Printf( "Server: %s\n",server );
 
