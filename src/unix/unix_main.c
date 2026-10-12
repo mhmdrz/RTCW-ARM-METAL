@@ -630,11 +630,11 @@ extern char   *FS_BuildOSPath( const char *base, const char *game, const char *q
 
 #if defined( DO_LOADDLL_WRAP )
 void *Sys_LoadDll_Wrapped( const char *name,
-						   intptr_t( **entryPoint ) ( intptr_t, ... ),
+						   intptr_t( **entryPoint ) ( intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t ),
 						   intptr_t ( *systemcalls )( intptr_t, ... ) )
 #else
 void *Sys_LoadDll( const char *name,
-				   intptr_t( **entryPoint ) ( intptr_t, ... ),
+				   intptr_t( **entryPoint ) ( intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t ),
 				   intptr_t ( *systemcalls )( intptr_t, ... ) )
 #endif
 {
@@ -775,7 +775,7 @@ void *Sys_LoadDll( const char *name,
 
 #if defined( DO_LOADDLL_WRAP )
 void *Sys_LoadDll( const char *name,
-				   intptr_t( **entryPoint ) ( intptr_t, ... ),
+				   intptr_t( **entryPoint ) ( intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t, intptr_t ),
 				   intptr_t ( *systemcalls )( intptr_t, ... ) ) {
 	void *ret;
 	Cvar_Set( "cl_noprint", "1" );

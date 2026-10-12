@@ -142,7 +142,14 @@ struct vm_s {
 
 	// for dynamic linked modules
 	void        *dllHandle;
-	intptr_t ( QDECL *entryPoint )( intptr_t callNum, ... );
+	// NOTE: fixed arity (callNum + 12 args), NOT variadic. vmMain is a
+	// non-variadic function; on Apple arm64 variadic and non-variadic calls
+	// use different conventions (stack vs registers for the trailing args),
+	// so calling vmMain through a variadic pointer passes garbage. Keep this
+	// signature matched to VM_Call's invocation and to vmMain.
+	intptr_t ( QDECL *entryPoint )( intptr_t callNum, intptr_t a1, intptr_t a2, intptr_t a3,
+									intptr_t a4, intptr_t a5, intptr_t a6, intptr_t a7,
+									intptr_t a8, intptr_t a9, intptr_t a10, intptr_t a11, intptr_t a12 );
 
 	// for interpreted modules
 	qboolean currentlyInterpreting;
