@@ -100,7 +100,10 @@ typedef struct {
 	byte file[65536];
 	short sqrTable[256];
 
-	unsigned int mcomp[256];
+	intptr_t mcomp[256];        // LP64: signed pointer-width motion-comp byte offsets.
+	                            // These are frequently negative (point back into the
+	                            // previous half-buffer); as 32-bit unsigned they only
+	                            // wrapped correctly when added to a 32-bit pointer.
 	byte                *qStatus[2][32768];
 
 	long oldXOff, oldYOff, oldysize, oldxsize;
