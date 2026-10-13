@@ -933,15 +933,22 @@ static void SV_InitGameVM( qboolean restart ) {
 	// start the entity parsing at the beginning
 	sv.entityParsePoint = CM_EntityString();
 
-	// use the current msec count for a random seed
-	// init for this gamestate
-	VM_Call( gvm, GAME_INIT, svs.time, Com_Milliseconds(), restart );
-
-	// clear all gentity pointers that might still be set from
-	// a previous level
+	// Clear all gentity pointers that might still be set from a previous
+	// level BEFORE running GAME_INIT. The VM restart/free just invalidated
+	// the old entity array, so any pointers the carried-over clients still
+	// hold now dangle. On a map_restart/loadgame sv.restarting is set, so a
+	// savegame restore inside GAME_INIT can call SV_SetConfigstring, whose
+	// broadcast loop dereferences client->gentity->r.svFlags -- a stale
+	// pointer there crashes (intermittently; worse on 64-bit where freed
+	// memory is more often unmapped). They are re-set when clients re-enter
+	// the world, so nulling here (rather than after GAME_INIT) is safe.
 	for ( i = 0 ; i < sv_maxclients->integer ; i++ ) {
 		svs.clients[i].gentity = NULL;
 	}
+
+	// use the current msec count for a random seed
+	// init for this gamestate
+	VM_Call( gvm, GAME_INIT, svs.time, Com_Milliseconds(), restart );
 }
 
 
