@@ -52,8 +52,15 @@ void GLimp_Init( void ) {
     // Enable with "+set r_metalHud 1" at launch (or the MTL_HUD_ENABLED=1 env
     // var). The Metal driver reads MTL_HUD_ENABLED when the device is created,
     // so set it now -- before MTLCreateSystemDefaultDevice below.
-    cvar_t *r_metalHud = ri.Cvar_Get( "r_metalHud", "0", CVAR_ARCHIVE | CVAR_LATCH );
-    if ( r_metalHud->integer ) {
+    ( void )ri.Cvar_Get( "r_metalHud", "0", CVAR_ARCHIVE | CVAR_LATCH );
+    // HUD temporarily force-disabled regardless of the cvar. r_metalHud is
+    // CVAR_ARCHIVE, so a previous "r_metalHud 1" persists in the config; it's
+    // also CVAR_LATCH, so Cvar_Set wouldn't update ->integer within this call.
+    // Gate the enables on a local flag instead, and drop any stale env var.
+    // To re-enable later, restore: qboolean hudEnabled = r_metalHud->integer != 0;
+    const qboolean hudEnabled = qfalse;
+    unsetenv( "MTL_HUD_ENABLED" );
+    if ( hudEnabled ) {
         setenv( "MTL_HUD_ENABLED", "1", 1 );
     }
 
@@ -92,7 +99,7 @@ void GLimp_Init( void ) {
 
     // Also enable the HUD via the programmatic API (macOS 13 / iOS 16+), which
     // covers the case where MTL_HUD_ENABLED was not present at device creation.
-    if ( r_metalHud->integer || getenv( "MTL_HUD_ENABLED" ) ) {
+    if ( hudEnabled || getenv( "MTL_HUD_ENABLED" ) ) {
         if ( @available( macOS 13.0, iOS 16.0, * ) ) {
             mtl_layer.developerHUDProperties = @{ @"mode" : @"default" };
         }
