@@ -705,6 +705,18 @@ static void CG_MapRestart( void ) {
 
 	// RF, clear out animScriptData so we recalc everything and get new pointers from server
 	memset( cgs.animScriptData.modelInfo, 0, sizeof( cgs.animScriptData.modelInfo ) );
+	// The game DLL was reloaded during the restart, so every clientInfo->modelInfo
+	// (a pointer into the game's now-freed memory pool, handed to us via the
+	// CG_GETMODELINFO syscall) is dangling. NULL them all before re-registering:
+	// the memset above only cleared the global cache, not these per-client copies,
+	// so a client we don't re-register below (not infoValid) would keep a stale
+	// pointer that CG_ResetPlayerEntity/CG_SetLerpFrameAnimationRate then derefs
+	// (ci->modelInfo->animations) -- a crash on 64-bit, where the old pool is
+	// unmapped (32-bit kept it mapped so it limped along). NULL is safe: the
+	// animation code guards every use with "if ( !ci->modelInfo ) return;".
+	for ( i = 0; i < MAX_CLIENTS; i++ ) {
+		cgs.clientinfo[i].modelInfo = NULL;
+	}
 	for ( i = 0; i < MAX_CLIENTS; i++ ) {
 		if ( cgs.clientinfo[i].infoValid ) {
 			CG_LoadClientInfo( &cgs.clientinfo[i] );    // re-register the valid clients
